@@ -1,0 +1,59 @@
+services:
+    # Servicio de PHP (Laravel)
+    app:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        volumes:
+            - ./src:/var/www/html
+            - postgres_data:/var/lib/postgresql/data
+        environment:
+            - DB_CONNECTION=pgsql
+            - DB_HOST=db
+            - DB_PORT=5432
+            - DB_DATABASE=prysm
+            - DB_USERNAME=prysm_user
+            - DB_PASSWORD=prysm_user
+        depends_on:
+            - db
+        networks:
+            - prysm-network
+        ports:
+            - "8000:80"    # Laravel (Nginx)
+            - "5173:5173"  # Vite (React)
+
+    # Servicio de PostgreSQL
+    db:
+        image: postgres:15
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+            - ./docker/postgresql/default.conf:/etc/postgresql/postgresql.conf
+        command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
+        environment:
+            - POSTGRES_DB=prysm
+            - POSTGRES_USER=prysm_user
+            - POSTGRES_PASSWORD=prysm_user
+        ports:
+            - "5433:5432"
+        networks:
+            - prysm-network
+
+    # Servicio de Nginx (Opcional)
+    nginx:
+        image: nginx:alpine
+        volumes:
+            - ./src:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        ports:
+            - "80:80"
+        depends_on:
+            - app
+        networks:
+            - prysm-network
+
+volumes:
+    postgres_data:
+
+networks:
+    prysm-network:
+        driver: bridge
